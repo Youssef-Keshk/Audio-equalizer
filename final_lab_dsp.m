@@ -7,7 +7,12 @@ fullFilePath = fullfile(filepath, filename);
 
 % Read the selected audio file
 [sig, fs] = audioread(fullFilePath);
-fprintf('\nFilter bands at original rate %.1f Hz:\n', fs);
+% Nyquist check
+if fs/2 < 20000
+    error('Sampling rate %.1f Hz is too low for filters up to 20kHz. Please use a wave file with fs >= 40kHz.', fs);
+else 
+    fprintf('\nFilter bands at original rate %.1f Hz:\n', fs);
+end
 
 % Calculate length of the audio signal
 n = length(sig);
@@ -141,14 +146,16 @@ for i = 1 : k
     else
         signal = sig; % Use as is for mono
     end
-    y(i,:) = gains(i) * filter(num, den, signal);  
+
+    % Convolution operation
+    y(i,:) = gains(i) * filter(num, den, signal); % filter() applies difference equation
 
     % Filter test signals to analyze filter characteristics
     step = filter(num, den, step_input);
     impulse = filter(num, den, impulse_input);
 
-    % Compute frequency response of filter
-    [H, f] = freqz(num, den, fs/2, fs);
+    % Compute complex frequency response H(e^jω)
+    [H, f] = freqz(num, den, fs/2, fs); % freqz() uses DFT on filter coefficients
 
 %------------------------------------------------------------------------
 
@@ -237,6 +244,7 @@ xlabel('Frequency (Hz)'); ylabel('Magnitude');
 if max(abs(filtered_sig)) < 1e-6
     warning('Filtered signal appears to be silent!');
 else
+    % Digital-to-analog conversion
     sound(filtered_sig, desired_rate);
 end
 
